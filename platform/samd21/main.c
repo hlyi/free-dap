@@ -19,7 +19,7 @@
 #define USB_BUFFER_SIZE		64
 #define UART_WAIT_TIMEOUT	10	// ms
 #define STATUS_TIMEOUT		250	// ms
-#define ADC_SAMPLE_INTERVAL	250	// ms
+#define ADC_SAMPLE_INTERVAL	100	// ms
 #define POWER_DETECT_THRESHOLD	7432	// 1.1V
 
 /*- Variables ---------------------------------------------------------------*/
@@ -433,7 +433,7 @@ static void adc_task(void)
   enum adc_state { adc_state_idle, adc_state_sync, adc_state_sample };
   static enum adc_state adc_st = adc_state_idle;
   static uint64_t next_sample_time = ADC_SAMPLE_INTERVAL;
-  static bool pwr_led_toggle = false;
+  static uint8_t flash_cnt = 0;
 
   if ( app_system_time < next_sample_time ) return;
 
@@ -472,8 +472,9 @@ static void adc_task(void)
 	  if ( HAL_GPIO_EXT_PWR_read() ) {
              // probe doesn't provide power interface
 	     // blinking LED
-	     pwr_led_on = pwr_led_toggle;
-             pwr_led_toggle = ! pwr_led_toggle;
+             pwr_led_on = flash_cnt > 1;
+	     flash_cnt++;
+	     if ( flash_cnt > 19 ) flash_cnt = 0;
 	  }else{
              // probe provides power supply, turn on LED
              pwr_led_on = true;
