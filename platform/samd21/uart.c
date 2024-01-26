@@ -38,10 +38,11 @@ void uart_init(usb_cdc_line_coding_t *line_coding)
   int chsize, form, pmode, sbmode, baud, fp;
 
   HAL_GPIO_UART_TX_out();
-  HAL_GPIO_UART_TX_clr();
+  HAL_GPIO_UART_TX_set();
   HAL_GPIO_UART_TX_pmuxen(UART_SERCOM_PMUX);
 
-  HAL_GPIO_UART_RX_pullup();
+//  HAL_GPIO_UART_RX_pullup();
+  HAL_GPIO_UART_RX_in();
   HAL_GPIO_UART_RX_pmuxen(UART_SERCOM_PMUX);
 
   PM->APBCMASK.reg |= UART_SERCOM_APBCMASK;
