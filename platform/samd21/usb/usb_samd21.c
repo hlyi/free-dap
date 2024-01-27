@@ -56,6 +56,7 @@ static alignas(4) udc_mem_t udc_mem[USB_EP_NUM];
 static alignas(4) uint8_t usb_ctrl_in_buf[64];
 static alignas(4) uint8_t usb_ctrl_out_buf[64];
 static void (*usb_control_recv_callback)(uint8_t *data, int size);
+static bool (*usb_setup_recv_callback)(uint8_t *data, int size) = NULL;
 static int usb_setup_length;
 
 /*- Prototypes --------------------------------------------------------------*/
@@ -316,6 +317,10 @@ void usb_control_recv(void (*callback)(uint8_t *data, int size))
   usb_control_recv_callback = callback;
 }
 
+void usb_setup_recv(bool (*callback)(uint8_t *data, int size))
+{
+  usb_setup_recv_callback = callback;
+}
 //-----------------------------------------------------------------------------
 void usb_task(void)
 {
@@ -358,6 +363,9 @@ void usb_task(void)
         udc_mem[0].out.PCKSIZE.bit.BYTE_COUNT = 0;
         USB->DEVICE.DeviceEndpoint[0].EPSTATUSCLR.bit.BK0RDY = 1;
         USB->DEVICE.DeviceEndpoint[0].EPINTFLAG.reg = USB_DEVICE_EPINTFLAG_TRCPT0;
+      }else if ( usb_setup_recv_callback &&
+                 ( ((request->bmRequestType >>5) & 0x3) == USB_VENDOR_REQUEST ) &&
+                 (*usb_setup_recv_callback)(usb_ctrl_out_buf, sizeof(usb_request_t)) ) {
       }
       else
       {
