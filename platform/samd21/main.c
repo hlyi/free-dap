@@ -91,6 +91,8 @@ static void                     set_ext_power(bool on);
 #define USB_CMD_PWR_STATUS      0x01
 #define USB_CMD_PWR_OFF         0x02
 #define USB_CMD_PWR_ON          0x03
+#define USB_CMD_NRST_DEASSERT	0x04
+#define USB_CMD_NRST_ASSERT	0x05
 #define USB_CMD_BOOT_BL         0x62
 #define UF2_BOOTLOADER_MAGIC    0xf01669ef
 static bool   reboot_device = false;
@@ -112,7 +114,10 @@ static bool usb_ven_setup_callback( uint8_t *data, int len)
     // in request
     if ( data[1] == USB_CMD_PWR_STATUS ){
       uint32_t  data = voltage_readout & 0xffffff;
-      data |= (power_state) <<24;
+      data |= (power_state) <<30;
+      data |= (HAL_GPIO_EXT_PWR_read() ? 1: 0 ) <<28;
+      data |= (HAL_GPIO_nRESET_SENSE_read() ? 0: 1) << 25;
+      data |= (HAL_GPIO_nRESET_read()  ? 0 : 1 ) << 24;
       *(uint32_t *)usb_ret_data = data;
       usb_control_send(usb_ret_data, 4);
       send_zlp = false;
@@ -128,6 +133,12 @@ static bool usb_ven_setup_callback( uint8_t *data, int len)
       break;
     case USB_CMD_BOOT_BL:
       reboot_device = true;
+      break;
+    case USB_CMD_NRST_ASSERT:
+      HAL_GPIO_nRESET_set();
+      break;
+    case USB_CMD_NRST_DEASSERT:
+      HAL_GPIO_nRESET_clr();
       break;
     }
   }
@@ -699,6 +710,9 @@ static void custom_init(void)
 #endif
 #ifdef HAL_CONFIG_ENABLE_USB_VEN
   usb_setup_recv(usb_ven_setup_callback);
+#endif
+#ifdef DAP_CONFIG_ENABLE_RST_SENSE
+  HAL_GPIO_nRESET_SENSE_in();
 #endif
 }
 
