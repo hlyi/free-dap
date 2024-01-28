@@ -11,6 +11,7 @@
 #include "hal_config.h"
 #include "nvm_data.h"
 #include "usb.h"
+#include "usb_std.h"
 #include "uart.h"
 #include "dap.h"
 #include "dap_config.h"
@@ -53,7 +54,7 @@ static bool app_vcp_open = false;
 // based upon 3MHz for TCC
 #define PWM_LED_PERIOD    2000
 // percentage of LED brigtness, 100 = Full brightness, current set to 5%
-#define LED_BRIGHTNESS	  (5 * PWM_LED_PERIOD/100)
+#define LED_BRIGHTNESS    (5 * PWM_LED_PERIOD/100)
 
 
 extern void custom_hal_gpio_dap_status_toggle();
@@ -67,26 +68,93 @@ extern void custom_hal_gpio_vcp_status_write(int val);
 
 #ifdef HAL_CONFIG_ENABLE_BUTTON
 // debounce set to 10ms
-#define	BUTTON_DEBOUNCE_TIME	10
-#define BUTTON_CLICK_MIN	40
-#define BUTTON_CLICK_MAX	250
-#define BUTTON_HOLD_MIN 	700
+#define BUTTON_DEBOUNCE_TIME    10
+#define BUTTON_CLICK_MIN        40
+#define BUTTON_CLICK_MAX        250
+#define BUTTON_HOLD_MIN         700
 enum button_mode {button_idle, button_click, button_doubletap, button_tripletap, button_hold, button_tap_hold, button_doubletap_hold};
 static enum button_mode button_state = button_idle;
 #endif
 
 #ifdef HAL_CONFIG_ENABLE_PROVIDE_PWR
-#define PWR_PWM_STEP		64U
-volatile uint8_t		power_state = 0;	// 0 power off, 1 power on, 2 turning on
-uint16_t			power_level = 0;
+#define PWR_PWM_STEP            64U
+volatile uint8_t                power_state = 0;        // 0 power off, 1 power on, 2 turning on
+uint16_t                        power_level = 0;
+static void                     set_ext_power(bool on);
 #endif
 //#define BUTTON_DEBUG
 //#define ADC_DEBUG
 //#define PWR_DEBUG
+//#define USBVEN_DEBUG
 
+#ifdef HAL_CONFIG_ENABLE_USB_VEN
+#define USB_CMD_PWR_STATUS      0x01
+#define USB_CMD_PWR_OFF         0x02
+#define USB_CMD_PWR_ON          0x03
+#define USB_CMD_BOOT_BL         0x62
+#define UF2_BOOTLOADER_MAGIC    0xf01669ef
+static bool   reboot_device = false;
+#endif
+
+#ifdef HAL_CONFIG_ADC_PWRSENSE
+uint32_t     voltage_readout = 0;
+#endif
 /*- Implementations ---------------------------------------------------------*/
 
 //-----------------------------------------------------------------------------
+#ifdef HAL_CONFIG_ENABLE_USB_VEN
+static bool usb_ven_setup_callback( uint8_t *data, int len)
+{
+  static alignas(4) uint8_t usb_ret_data[4];
+  (void) len;
+  bool send_zlp = true;
+  if ( data[0] & 0x80 ) {
+    // in request
+    if ( data[1] == USB_CMD_PWR_STATUS ){
+      uint32_t  data = voltage_readout & 0xffffff;
+      data |= (power_state) <<24;
+      *(uint32_t *)usb_ret_data = data;
+      usb_control_send(usb_ret_data, 4);
+      send_zlp = false;
+    }
+  }else {
+    // out request
+    switch ( data[1] ){
+    case USB_CMD_PWR_OFF:
+      set_ext_power(false);
+      break;
+    case USB_CMD_PWR_ON:
+      set_ext_power(true);
+      break;
+    case USB_CMD_BOOT_BL:
+      reboot_device = true;
+      break;
+    }
+  }
+  if ( send_zlp ) usb_control_send_zlp();
+#ifdef USBVEN_DEBUG
+  static alignas(4) uint8_t  message[18] = {'U','=', 0,0,',',0,0,',',0,0,0,0,0,0,0,0,'\n',0};
+  uint32_t dbg = data[0];
+  for (int i = 0; i < 2; i++){
+    message[3-i] = "0123456789ABCDEF"[dbg & 0xf];
+    dbg >>= 4;
+  }
+  dbg = data[1];
+  for (int i = 0; i < 2; i++){
+    message[6-i] = "0123456789ABCDEF"[dbg & 0xf];
+    dbg >>= 4;
+  }
+  dbg = *(uint32_t*)  usb_ret_data;
+  for (int i = 0; i < 8; i++){
+    message[15-i] = "0123456789ABCDEF"[dbg & 0xf];
+    dbg >>= 4;
+  }
+  usb_cdc_send(message,17);
+#endif
+  return true;
+}
+#endif
+
 #ifdef HAL_CONFIG_ENABLE_PROVIDE_PWR
 static void pwr_custom_init()
 {
@@ -125,6 +193,12 @@ static void pwr_custom_init()
 
 static void ext_power_toggle()
 {
+  if (power_state == 2) return;
+  set_ext_power (!power_state);
+}
+
+static void set_ext_power(bool on)
+{
 #ifdef PWR_DEBUG
   static alignas(4) uint8_t  message[12] = {'P','S','=', 0,'L','=',0,0,'\n',0};
   uint16_t dbg = power_state;
@@ -142,8 +216,10 @@ static void ext_power_toggle()
 //  HAL_GPIO_EXT_PWR_toggle();
 //  return;
   // if in power up transition, ignore the request
-  if ( power_state == 2) return;
-  if ( power_state ) {
+  if ( power_state == 2) return;        // ignore if if in transition state
+  if ( power_state && on ) return;      // ignore if request the state is
+  if ( !power_state && ! on) return;    //  the same as current state
+  if ( ! on ) {
     // turn off power
     HAL_GPIO_EXT_PWR_set();
     HAL_GPIO_EXT_PWR_pmuxdis();
@@ -347,7 +423,7 @@ static void button_task(void)
         break;
       case button_doubletap_hold:
         NVIC_SystemReset();
-	break;
+        break;
       default:
         break;
     }
@@ -454,32 +530,33 @@ static void adc_task(void)
         /* Clear the flag. */
         ADC->INTFLAG.reg = ADC_INTFLAG_RESRDY;
         /* Read the value: voltage in uV = result*148  */
-	/* Due to onboard resistor dividor 100/147 */
-	/* (4095*8) = 3.3V */
-        uint32_t result = ADC->RESULT.reg;
+        /* Due to onboard resistor dividor 100/147 */
+        /* (4095*8) = 3.3V */
+        voltage_readout = ADC->RESULT.reg;
         adc_st = adc_state_idle;
         next_sample_time = app_system_time + ADC_SAMPLE_INTERVAL;
 #ifdef ADC_DEBUG
+        uint32_t result = voltage_readout;
         for (int i = 0; i < 8; i++){
           message[9-i] = "0123456789ABCDEF"[result & 0xf];
-	  result >>= 4;
+          result >>= 4;
         }
         usb_cdc_send(message,11);
 #endif
-	bool pwr_led_on = false;
-	if ( result > POWER_DETECT_THRESHOLD ){
+        bool pwr_led_on = false;
+        if ( voltage_readout > POWER_DETECT_THRESHOLD ){
           // power detected
-	  if ( HAL_GPIO_EXT_PWR_read() ) {
+          if ( HAL_GPIO_EXT_PWR_read() ) {
              // probe doesn't provide power interface
-	     // blinking LED
+             // blinking LED
              pwr_led_on = flash_cnt > 1;
-	     flash_cnt++;
-	     if ( flash_cnt > 19 ) flash_cnt = 0;
-	  }else{
+             flash_cnt++;
+             if ( flash_cnt > 19 ) flash_cnt = 0;
+          }else{
              // probe provides power supply, turn on LED
              pwr_led_on = true;
-	  }
-	}
+          }
+        }
 #ifdef HAL_CONFIG_ENABLE_PWR_LED
         TCC0->CC[POWER_LED_CC_CH].reg = pwr_led_on ? LED_BRIGHTNESS : 0 ;
 #endif
@@ -619,6 +696,9 @@ static void custom_init(void)
   HAL_GPIO_EXT_PWR_out();
   HAL_GPIO_EXT_PWR_set();
   pwr_custom_init();
+#endif
+#ifdef HAL_CONFIG_ENABLE_USB_VEN
+  usb_setup_recv(usb_ven_setup_callback);
 #endif
 }
 
@@ -1023,8 +1103,13 @@ int main(void)
 #endif
 //    if (0 == HAL_GPIO_BOOT_ENTER_read())
 //      NVIC_SystemReset();
+    if ( reboot_device ) break;
   }
 
+  usb_detach();
+  // put bootloader magic and reboot device
+  * (uint32_t *) (HMCRAMC0_ADDR+ HMCRAMC0_SIZE-4) = UF2_BOOTLOADER_MAGIC;
+  NVIC_SystemReset();
   return 0;
 }
 

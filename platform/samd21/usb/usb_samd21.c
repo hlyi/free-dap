@@ -358,14 +358,14 @@ void usb_task(void)
 
     if (sizeof(usb_request_t) == udc_mem[0].out.PCKSIZE.bit.BYTE_COUNT)
     {
-      if (usb_handle_standard_request(request))
+      if (usb_handle_standard_request(request) ||
+          ( usb_setup_recv_callback &&
+            ( ((request->bmRequestType >>5) & 0x3) == USB_VENDOR_REQUEST ) &&
+            (*usb_setup_recv_callback)(usb_ctrl_out_buf, sizeof(usb_request_t)) ) )
       {
         udc_mem[0].out.PCKSIZE.bit.BYTE_COUNT = 0;
         USB->DEVICE.DeviceEndpoint[0].EPSTATUSCLR.bit.BK0RDY = 1;
         USB->DEVICE.DeviceEndpoint[0].EPINTFLAG.reg = USB_DEVICE_EPINTFLAG_TRCPT0;
-      }else if ( usb_setup_recv_callback &&
-                 ( ((request->bmRequestType >>5) & 0x3) == USB_VENDOR_REQUEST ) &&
-                 (*usb_setup_recv_callback)(usb_ctrl_out_buf, sizeof(usb_request_t)) ) {
       }
       else
       {
