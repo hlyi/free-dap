@@ -231,6 +231,21 @@ const alignas(4) usb_configuration_hierarchy_t usb_configuration_hierarchy =
     .bInterval           = 0,
   },
 #endif
+#ifdef HAL_CONFIG_ENABLE_USB_VEN
+  // VENDOR Specific
+  .ven_interface =
+  {
+    .bLength             = sizeof(usb_interface_descriptor_t),
+    .bDescriptorType     = USB_INTERFACE_DESCRIPTOR,
+    .bInterfaceNumber    = USB_INTF_VEN,
+    .bAlternateSetting   = 0,
+    .bNumEndpoints       = 0,
+    .bInterfaceClass     = USB_DEVICE_CLASS_VENDOR_SPECIFIC,
+    .bInterfaceSubClass  = 0,
+    .bInterfaceProtocol  = 0,
+    .iInterface          = 0,
+  },
+#endif
 };
 
 const alignas(4) usb_bos_hierarchy_t usb_bos_hierarchy =

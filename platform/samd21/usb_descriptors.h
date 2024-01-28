@@ -48,6 +48,9 @@ enum
   USB_INTF_CDC_COMM,
   USB_INTF_CDC_DATA,
 #endif
+#ifdef HAL_CONFIG_ENABLE_USB_VEN
+  USB_INTF_VEN,
+#endif
   USB_INTF_COUNT,
 };
 
@@ -76,6 +79,9 @@ typedef struct USB_PACK
   usb_interface_descriptor_t                       interface_data;
   usb_endpoint_descriptor_t                        ep_in;
   usb_endpoint_descriptor_t                        ep_out;
+#endif
+#ifdef HAL_CONFIG_ENABLE_USB_VEN
+  usb_interface_descriptor_t                       ven_interface;
 #endif
 } usb_configuration_hierarchy_t;
 
