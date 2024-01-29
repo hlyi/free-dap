@@ -91,15 +91,23 @@ static void                     set_ext_power(bool on);
 #define USB_CMD_PWR_STATUS      0x01
 #define USB_CMD_PWR_OFF         0x02
 #define USB_CMD_PWR_ON          0x03
-#define USB_CMD_NRST_DEASSERT	0x04
-#define USB_CMD_NRST_ASSERT	0x05
+#define USB_CMD_NRST_DEASSERT   0x04
+#define USB_CMD_NRST_ASSERT     0x05
 #define USB_CMD_BOOT_BL         0x62
+#define USB_CMD_BOOT_CL_APP1    0x63
+#define USB_CMD_BOOT_CL_APP2    0x64
+
+#define CHAINLOAD_APP1_ADDR     0x10000
+#define CHAINLOAD_APP2_ADDR     0x18000
+
 #define UF2_BOOTLOADER_MAGIC    0xf01669ef
-static bool   reboot_device = false;
+#define UF2_CHAINLOADER_MAGIC   0xf04669ef
+static bool     reboot_device = false;
+static uint8_t  chainload_idx = 0;
 #endif
 
 #ifdef HAL_CONFIG_ADC_PWRSENSE
-uint32_t     voltage_readout = 0;
+uint32_t      voltage_readout = 0;
 #endif
 /*- Implementations ---------------------------------------------------------*/
 
@@ -133,6 +141,15 @@ static bool usb_ven_setup_callback( uint8_t *data, int len)
       break;
     case USB_CMD_BOOT_BL:
       reboot_device = true;
+      chainload_idx = 0;
+      break;
+    case USB_CMD_BOOT_CL_APP1:
+      reboot_device = true;
+      chainload_idx = 1;
+      break;
+    case USB_CMD_BOOT_CL_APP2:
+      reboot_device = true;
+      chainload_idx = 2;
       break;
     case USB_CMD_NRST_ASSERT:
       HAL_GPIO_nRESET_set();
@@ -1121,8 +1138,13 @@ int main(void)
   }
 
   usb_detach();
-  // put bootloader magic and reboot device
-  * (uint32_t *) (HMCRAMC0_ADDR+ HMCRAMC0_SIZE-4) = UF2_BOOTLOADER_MAGIC;
+  if ( chainload_idx == 0 ) {
+    // put bootloader magic and reboot device
+    * (uint32_t *) (HMCRAMC0_ADDR+ HMCRAMC0_SIZE-4) = UF2_BOOTLOADER_MAGIC;
+  }else{
+    * (uint32_t *) (HMCRAMC0_ADDR+ HMCRAMC0_SIZE-4) = UF2_CHAINLOADER_MAGIC;
+    * (uint32_t *) (HMCRAMC0_ADDR+ HMCRAMC0_SIZE-8) = (chainload_idx == 2) ? CHAINLOAD_APP2_ADDR : CHAINLOAD_APP1_ADDR;
+  }
   NVIC_SystemReset();
   return 0;
 }
