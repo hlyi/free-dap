@@ -88,11 +88,11 @@ static void                     set_ext_power(bool on);
 //#define USBVEN_DEBUG
 
 #ifdef HAL_CONFIG_ENABLE_USB_VEN
-#define USB_CMD_PWR_STATUS      0x01
-#define USB_CMD_PWR_OFF         0x02
-#define USB_CMD_PWR_ON          0x03
-#define USB_CMD_NRST_DEASSERT   0x04
-#define USB_CMD_NRST_ASSERT     0x05
+#define USB_CMD_PWR_STATUS      0x51
+#define USB_CMD_PWR_OFF         0x52
+#define USB_CMD_PWR_ON          0x53
+#define USB_CMD_NRST_DEASSERT   0x54
+#define USB_CMD_NRST_ASSERT     0x55
 #define USB_CMD_BOOT_BL         0x62
 #define USB_CMD_BOOT_CL_APP1    0x63
 #define USB_CMD_BOOT_CL_APP2    0x64
