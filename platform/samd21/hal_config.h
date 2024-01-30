@@ -53,14 +53,14 @@
   #define DAP_CONFIG_ENABLE_RST_SENSE
   #define DAP_CONFIG_RST_ACTIVE_HIGH
 
-  HAL_GPIO_PIN(SWCLK_TCK,          A, 6)
+  HAL_GPIO_PIN(SWCLK_TCK,          A, 17)	// Mod with PA17, orginal control is on PA06
   HAL_GPIO_PIN(SWDIO_TMS,          A, 0)
   HAL_GPIO_PIN(SWDIO_TMS_DIR,      A, 15)
   HAL_GPIO_PIN(TDI,                A, 16)
   HAL_GPIO_PIN(TDO,                A, 19)
   HAL_GPIO_PIN(nRESET,             A, 8)
   HAL_GPIO_PIN(nRESET_SENSE,       A, 9)
-  HAL_GPIO_PIN(EXT_PWR,            A, 1);	// Mod with PA01 for PWM control. original contro is on PA28
+  HAL_GPIO_PIN(EXT_PWR,            A, 1);	// Mod with PA01 for PWM control. original control is on PA28
 
   HAL_GPIO_PIN(UART_TX,            A, 4);	// PAD[0]
   HAL_GPIO_PIN(UART_RX,            A, 7);	// PAD[3]
