@@ -65,18 +65,18 @@
   HAL_GPIO_PIN(UART_TX,            A, 4);	// PAD[0]
   HAL_GPIO_PIN(UART_RX,            A, 7);	// PAD[3]
 
-  HAL_GPIO_PIN(VCP_STATUS,         A, 10);
-  HAL_GPIO_PIN(DAP_STATUS,         A, 11);
-  HAL_GPIO_PIN(PWR_STATUS,         A, 14);
+  HAL_GPIO_PIN(VCP_LED,            A, 10);
+  HAL_GPIO_PIN(APP_LED,            A, 11);
+  HAL_GPIO_PIN(PWR_LED,            A, 14);
   HAL_GPIO_PIN(BUTTON,             A, 27);
 
   /* PA10/WO[2], PA11/WO[3], PA14/WO[4] */
   // CC0 used by Power LED
-  #define POWER_LED_CC_CH		0
+  #define PWR_LED_CC_CH		0
   // CC2 used by VCP
-  #define VCP_STATUS_CC_CH		2
+  #define VCP_LED_CC_CH		2
   // CC3 used by DAP
-  #define DAP_STATUS_CC_CH		3
+  #define APP_LED_CC_CH		3
 
   #define HAL_CONFIG_ADC_PWRSENSE
   HAL_GPIO_PIN(ADC_PWRSENSE,          A, 2)

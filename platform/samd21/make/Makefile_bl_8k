@@ -36,6 +36,9 @@ INCLUDES += \
   -I..
 
 SRCS += \
+  ../led_status.c \
+  ../pwr_ctrl.c \
+  ../button.c \
   ../main.c \
   ../uart.c \
   ../usb/usb_samd21.c \
