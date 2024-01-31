@@ -483,7 +483,7 @@ int main(void)
   button_init();
   led_status_init();
 
-  while (1)
+  while (!reboot_device)
   {
     sys_time_task();
     usb_task();
@@ -501,7 +501,6 @@ int main(void)
 
 //    if (0 == HAL_GPIO_BOOT_ENTER_read())
 //      NVIC_SystemReset();
-    if ( reboot_device ) break;
   }
 
   usb_detach();
