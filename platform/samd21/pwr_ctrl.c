@@ -8,7 +8,11 @@ uint32_t	voltage_readout = 0 ;
 /* Assume power control pin is on TCC2 WO1 */
 static void pwr_ctrl_sw_init(void)
 {
+#ifdef PWR_CTRL_INV
 	HAL_GPIO_EXT_PWR_set();
+#else
+	HAL_GPIO_EXT_PWR_clr();
+#endif
 	HAL_GPIO_EXT_PWR_out();
 
 	/* Enable the APB clock for TCC2 */
@@ -30,7 +34,11 @@ static void pwr_ctrl_sw_init(void)
 	while (TCC2->SYNCBUSY.bit.WAVE) {};
 
 	/* Invert ouput */
+#ifdef PWR_CTRL_INV
 	TCC2->DRVCTRL.reg |= TCC_DRVCTRL_INVEN1;
+#else
+	TCC2->DRVCTRL.reg &= ~TCC_DRVCTRL_INVEN1;
+#endif
 	/* n for CC[n] is determined by n = x % 4 where x is from WO[x]
 	 WO[x] comes from the peripheral multiplexer - we'll get to that in a second.
 	*/
@@ -71,7 +79,11 @@ void set_tgt_power(bool on)
 	if ( !power_state && ! on) return;		//	the same as current state
 	if ( ! on ) {
 		// turn off power
+#ifdef PWR_CTRL_INV
 		HAL_GPIO_EXT_PWR_set();
+#else
+		HAL_GPIO_EXT_PWR_clr();
+#endif
 		HAL_GPIO_EXT_PWR_pmuxdis();
 		power_state = 0;
 		return;
@@ -95,7 +107,11 @@ static void pwr_ctrl_sw_task()
 		return;
 	}
 	// reach full power on
+#ifdef PWR_CTRL_INV
 	HAL_GPIO_EXT_PWR_clr();
+#else
+	HAL_GPIO_EXT_PWR_set();
+#endif
 	HAL_GPIO_EXT_PWR_pmuxdis();
 	TCC2->CTRLA.reg &= ~(TCC_CTRLA_ENABLE);
 	power_state = 1;

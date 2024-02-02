@@ -7,6 +7,7 @@
 
 //#define PWR_DEBUG
 //#define ADC_DEBUG
+//#define PWR_CTRL_INV
 
 extern uint64_t			app_system_time;
 
@@ -19,7 +20,13 @@ extern uint8_t			power_state;			// 0 power off, 1 power on, 2 turning on
 extern uint32_t			voltage_readout ;
 
 inline static bool		is_tgt_power_detected(void) { return voltage_readout > POWER_DETECT_THRESHOLD; };
-inline static bool		is_tgt_power_driven(void) { return !HAL_GPIO_EXT_PWR_read() ; };
+inline static bool		is_tgt_power_driven(void) {
+#ifdef PWR_CTRL_INV
+					return !HAL_GPIO_EXT_PWR_read() ;
+#else
+					return HAL_GPIO_EXT_PWR_read() ;
+#endif
+				};
 void     	                set_tgt_power(bool on);
 void				toggle_tgt_power(void);
 
