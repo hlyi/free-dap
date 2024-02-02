@@ -87,7 +87,7 @@ static bool usb_ven_setup_callback( uint8_t *data, int len)
     if ( data[1] == USB_CMD_PWR_STATUS ){
       uint32_t  data = voltage_readout & 0xffffff;
       data |= (power_state) <<30;
-      data |= (HAL_GPIO_EXT_PWR_read() ? 1: 0 ) <<28;
+      data |= (is_tgt_power_driven() ? 0: 1 ) <<28;
       data |= (HAL_GPIO_nRESET_SENSE_read() ? 0: 1) << 25;
       data |= (HAL_GPIO_nRESET_read()  ? 0 : 1 ) << 24;
       *(uint32_t *)usb_ret_data = data;
