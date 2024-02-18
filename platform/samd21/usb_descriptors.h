@@ -10,6 +10,7 @@
 #include "usb_hid.h"
 #include "usb_winusb.h"
 #include "hal_config.h"
+#include "usb_jeff_ctrl.h"
 
 /*- Definitions -------------------------------------------------------------*/
 #define USB_ENABLE_BOS
@@ -113,9 +114,9 @@ extern const uint8_t usb_hid_report_descriptor[28];
 extern const usb_string_descriptor_zero_t usb_string_descriptor_zero;
 extern const char *usb_strings[];
 #ifdef HAL_CONFIG_ENABLE_VCP
-extern const usb_class_handler_t usb_class_handlers[3];
+extern const usb_class_handler_t usb_class_handlers[4];
 #else
-extern const usb_class_handler_t usb_class_handlers[2];
+extern const usb_class_handler_t usb_class_handlers[3];
 #endif
 extern char usb_serial_number[16];
 

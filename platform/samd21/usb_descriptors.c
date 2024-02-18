@@ -360,17 +360,19 @@ const char *usb_strings[] =
 };
 
 #ifdef HAL_CONFIG_ENABLE_VCP
-const usb_class_handler_t usb_class_handlers[3] =
+const usb_class_handler_t usb_class_handlers[4] =
 {
   usb_hid_handle_request,
   usb_cdc_handle_request,
   usb_winusb_handle_request,
+  usb_jeffprobe_handle_request,
 };
 #else
-const usb_class_handler_t usb_class_handlers[2] =
+const usb_class_handler_t usb_class_handlers[3] =
 {
   usb_hid_handle_request,
   usb_winusb_handle_request,
+  usb_jeffprobe_handle_request,
 };
 #endif
 

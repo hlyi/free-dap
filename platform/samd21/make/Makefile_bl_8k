@@ -46,6 +46,7 @@ SRCS += \
   ../usb/usb_cdc.c \
   ../usb/usb_hid.c \
   ../usb/usb_winusb.c \
+  ../usb/usb_jeff_ctrl.c \
   ../usb_descriptors.c \
   ../startup_samd21.c \
   ../../../dap.c \

@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <stdalign.h>
 #include <string.h>
-#include "samd21.h"
+//#include "samd21.h"
 #include "hal_config.h"
 #include "nvm_data.h"
 #include "usb.h"
@@ -18,6 +18,7 @@
 #include "button.h"
 #include "pwr_ctrl.h"
 #include "led_status.h"
+#include "usb_jeff_ctrl.h"
 
 /*- Definitions -------------------------------------------------------------*/
 #define USB_BUFFER_SIZE		64
@@ -52,108 +53,23 @@ bool vcp_opened = false;
 //#define BUTTON_DEBUG
 //#define ADC_DEBUG
 //#define PWR_DEBUG
-//#define USBVEN_DEBUG
+//#define JEFF_DEBUG
 
 #ifdef HAL_CONFIG_ENABLE_USB_VEN
-#define USB_CMD_PWR_STATUS      0x51
-#define USB_CMD_PWR_OFF         0x52
-#define USB_CMD_PWR_ON          0x53
-#define USB_CMD_NRST_DEASSERT   0x54
-#define USB_CMD_NRST_ASSERT     0x55
-#define USB_CMD_BOOT_BL         0x62
-#define USB_CMD_BOOT_CL_APP1    0x63
-#define USB_CMD_BOOT_CL_APP2    0x64
 
 #define CHAINLOAD_APP1_ADDR     0x10000
 #define CHAINLOAD_APP2_ADDR     0x18000
 
-#define UF2_BOOTLOADER_MAGIC    0xf01669ef
-#define UF2_CHAINLOADER_MAGIC   0xf04669ef
-static bool     reboot_device = false;
-static uint8_t  chainload_idx = 0;
+volatile bool     reboot_device = false;
+volatile uint8_t  chainload_idx = 0;
 #endif
 
 /*- Implementations ---------------------------------------------------------*/
 
 //-----------------------------------------------------------------------------
-#ifdef HAL_CONFIG_ENABLE_USB_VEN
-static bool usb_ven_setup_callback( uint8_t *data, int len)
-{
-  static alignas(4) uint8_t usb_ret_data[4];
-  (void) len;
-  bool send_zlp = true;
-  if ( data[0] & 0x80 ) {
-    // in request
-    if ( data[1] == USB_CMD_PWR_STATUS ){
-      uint32_t  data = voltage_readout & 0xffffff;
-      data |= (power_state) <<30;
-      data |= (is_tgt_power_driven() ? 0: 1 ) <<28;
-      data |= (HAL_GPIO_nRESET_SENSE_read() ? 0: 1) << 25;
-      data |= (HAL_GPIO_nRESET_read()  ? 0 : 1 ) << 24;
-      *(uint32_t *)usb_ret_data = data;
-      usb_control_send(usb_ret_data, 4);
-      send_zlp = false;
-    }
-  }else {
-    // out request
-    switch ( data[1] ){
-    case USB_CMD_PWR_OFF:
-      set_tgt_power(false);
-      break;
-    case USB_CMD_PWR_ON:
-      set_tgt_power(true);
-      break;
-    case USB_CMD_BOOT_BL:
-      reboot_device = true;
-      chainload_idx = 0;
-      break;
-    case USB_CMD_BOOT_CL_APP1:
-      reboot_device = true;
-      chainload_idx = 1;
-      break;
-    case USB_CMD_BOOT_CL_APP2:
-      reboot_device = true;
-      chainload_idx = 2;
-      break;
-    case USB_CMD_NRST_ASSERT:
-      HAL_GPIO_nRESET_set();
-      break;
-    case USB_CMD_NRST_DEASSERT:
-      HAL_GPIO_nRESET_clr();
-      break;
-    }
-  }
-  if ( send_zlp ) usb_control_send_zlp();
-#ifdef USBVEN_DEBUG
-  static alignas(4) uint8_t  message[18] = {'U','=', 0,0,',',0,0,',',0,0,0,0,0,0,0,0,'\n',0};
-  uint32_t dbg = data[0];
-  for (int i = 0; i < 2; i++){
-    message[3-i] = "0123456789ABCDEF"[dbg & 0xf];
-    dbg >>= 4;
-  }
-  dbg = data[1];
-  for (int i = 0; i < 2; i++){
-    message[6-i] = "0123456789ABCDEF"[dbg & 0xf];
-    dbg >>= 4;
-  }
-  dbg = *(uint32_t*)  usb_ret_data;
-  for (int i = 0; i < 8; i++){
-    message[15-i] = "0123456789ABCDEF"[dbg & 0xf];
-    dbg >>= 4;
-  }
-  usb_cdc_send(message,17);
-#endif
-  return true;
-}
-#endif
-
-
 
 static void custom_init(void)
 {
-#ifdef HAL_CONFIG_ENABLE_USB_VEN
-  usb_setup_recv(usb_ven_setup_callback);
-#endif
 #ifdef DAP_CONFIG_ENABLE_RST_SENSE
   HAL_GPIO_nRESET_SENSE_in();
 #endif
@@ -502,16 +418,7 @@ int main(void)
 //    if (0 == HAL_GPIO_BOOT_ENTER_read())
 //      NVIC_SystemReset();
   }
-
-  usb_detach();
-  if ( chainload_idx == 0 ) {
-    // put bootloader magic and reboot device
-    * (uint32_t *) (HMCRAMC0_ADDR+ HMCRAMC0_SIZE-4) = UF2_BOOTLOADER_MAGIC;
-  }else{
-    * (uint32_t *) (HMCRAMC0_ADDR+ HMCRAMC0_SIZE-4) = UF2_CHAINLOADER_MAGIC;
-    * (uint32_t *) (HMCRAMC0_ADDR+ HMCRAMC0_SIZE-8) = (chainload_idx == 2) ? CHAINLOAD_APP2_ADDR : CHAINLOAD_APP1_ADDR;
-  }
-  NVIC_SystemReset();
+  usb_jeff_reboot( CHAINLOAD_APP1_ADDR, CHAINLOAD_APP2_ADDR);
   return 0;
 }
 

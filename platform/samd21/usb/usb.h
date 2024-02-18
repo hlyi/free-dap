@@ -25,7 +25,6 @@ void usb_control_send_zlp(void);
 void usb_control_stall(void);
 void usb_control_send(uint8_t *data, int size);
 void usb_control_recv(void (*callback)(uint8_t *data, int size));
-void usb_setup_recv(bool (*callback)(uint8_t *data,int size));
 void usb_task(void);
 
 void usb_configuration_callback(int config);
