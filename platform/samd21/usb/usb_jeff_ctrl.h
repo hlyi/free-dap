@@ -17,11 +17,12 @@
 #define USB_CMD_BOOT_CL_APP1    0x63
 #define USB_CMD_BOOT_CL_APP2    0x64
 
-extern volatile bool	reboot_device ;
-extern volatile uint8_t	chainload_idx ;
-extern uint32_t		voltage_readout;
+// main app API
+bool	usb_jeffprobe_is_stop(void);
+void	usb_jeffprobe_reboot( void );
+void	usb_jeffprobe_set_app_addr(uint32_t *addr, int addr_size);
 
-bool			usb_jeffprobe_handle_request( usb_request_t *request );
-void			usb_jeff_reboot( uint32_t app1_addr, uint32_t app2_addr );
+// usb callback API
+bool	usb_jeffprobe_handle_request( usb_request_t *request );
 
 #endif

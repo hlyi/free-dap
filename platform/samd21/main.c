@@ -56,12 +56,8 @@ bool vcp_opened = false;
 //#define JEFF_DEBUG
 
 #ifdef HAL_CONFIG_ENABLE_USB_VEN
-
-#define CHAINLOAD_APP1_ADDR     0x10000
-#define CHAINLOAD_APP2_ADDR     0x18000
-
-volatile bool     reboot_device = false;
-volatile uint8_t  chainload_idx = 0;
+// Chainloader addresses
+static uint32_t chainloader_app_addr[2] = { 0x10000, 0x18000 };
 #endif
 
 /*- Implementations ---------------------------------------------------------*/
@@ -73,6 +69,7 @@ static void custom_init(void)
 #ifdef DAP_CONFIG_ENABLE_RST_SENSE
   HAL_GPIO_nRESET_SENSE_in();
 #endif
+  usb_jeffprobe_set_app_addr(chainloader_app_addr,2);
 }
 
 static void sys_init(void)
@@ -399,7 +396,7 @@ int main(void)
   button_init();
   led_status_init();
 
-  while (!reboot_device)
+  while (!usb_jeffprobe_is_stop())
   {
     sys_time_task();
     usb_task();
@@ -418,7 +415,7 @@ int main(void)
 //    if (0 == HAL_GPIO_BOOT_ENTER_read())
 //      NVIC_SystemReset();
   }
-  usb_jeff_reboot( CHAINLOAD_APP1_ADDR, CHAINLOAD_APP2_ADDR);
+  usb_jeffprobe_reboot();
   return 0;
 }
 
